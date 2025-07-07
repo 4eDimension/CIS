@@ -110,7 +110,7 @@ jobs:
       - name: Rename archive and upload to FTP
         shell: bash
         run: |
-          ZIPNAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip
+          ZIPNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip
           mv "${GITHUB_WORKSPACE}/Build/Client/update.mac.4darchive" "${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME"
           curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME ${{ secrets.FTP_PRIVATE_PATH }}
         
@@ -143,27 +143,22 @@ jobs:
       - name: Download and delete FTP file
         shell: cmd
         run: |
-          SET "FILE_NAME"="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
-          SET "LOCAL_PATH"="%WORKSPACE%/Build/update.mac.4darchive"
-          SET "REMOTE_URL"="${{ secrets.FTP_PRIVATE_PATH }}$FILE_NAME"
+          SET "WORKSPACE=%GITHUB_WORKSPACE%"
+          SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          SET "LOCAL_PATH=%WORKSPACE%\Build\update.mac.4darchive"
+          SET "REMOTE_URL=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%"
 
           echo "== Téléchargement du fichier =="
-          mkdir -p "%WORKSPACE%/Build"
+          IF NOT EXIST "%WORKSPACE%\Build" mkdir "%WORKSPACE%\Build"
 
-          curl --ftp-ssl-reqd \
-            --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" \
-            --output "$LOCAL_PATH" "$REMOTE_URL"
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH%" "%REMOTE_URL%"
 
           echo "== Copie vers le dossier output =="
-          mkdir -p "%WORKSPACE%/output"
-          cp "$LOCAL_PATH" "%WORKSPACE%/output/$FILE_NAME"
+          IF NOT EXIST "%WORKSPACE%\output" mkdir "%WORKSPACE%\output"
+          copy "%LOCAL_PATH%" "%WORKSPACE%\output\%FILE_NAME%"
 
           echo "== Suppression du fichier distant =="
-          curl --ftp-ssl-reqd \
-            --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" \
-            --quote "CWD /%FTP_PRIVATE_SHORT_PATH%" \
-            --quote "DELE $FILE_NAME" \
-            ftp://%FTP_PRIVATE_SERVER%:2121
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --quote "CWD /%FTP_PRIVATE_SHORT_PATH%" --quote "DELE %FILE_NAME%" ftp://%FTP_PRIVATE_SERVER%:2121
           
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
