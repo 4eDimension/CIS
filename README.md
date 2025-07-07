@@ -5,7 +5,7 @@
 ![Team](https://img.shields.io/badge/team-PS-informational)
 <br>
 ![Build continue](https://github.com/4eDimension/CIS/actions/workflows/build-continue.yml/badge.svg)
-![Build release](https://github.com/4eDimension/CIS/actions/workflows/build-release.yml/badge.svg)
+![Build executable](https://github.com/4eDimension/CIS/actions/workflows/build-executable.yml/badge.svg)
 <br>
 [![support mac](https://img.shields.io/badge/macOS-000000.svg?style=flat-square&logo=apple&labelColor=000000&logoColor=white)]()
 [![support windows](https://img.shields.io/badge/windows-0078D6.svg?style=flat-square&logo=MODX&logoColor=white)]()
