@@ -111,9 +111,11 @@ jobs:
         shell: bash
         run: |
           ZIPNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip
+          DMGNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
           mv "${GITHUB_WORKSPACE}/Build/Client/update.mac.4darchive" "${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME"
           curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME ${{ secrets.FTP_PRIVATE_PATH }}
-        
+          mv "${GITHUB_WORKSPACE}/Build/Client/${{ steps.detect_app_client.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/Build/Client/$DMGNAME"
+          curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$DMGNAME ${{ secrets.FTP_PRIVATE_PATH }}
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
@@ -144,21 +146,21 @@ jobs:
         shell: cmd
         run: |
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
-          SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
-          SET "LOCAL_PATH=%WORKSPACE%\Build\Client\update.mac.4darchive"
-          SET "REMOTE_URL=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%"
+          SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}"
+          SET "LOCAL_PATH_ZIP=%WORKSPACE%\Build\update.mac.4darchive"
+          SET "LOCAL_PATH_DMG=%WORKSPACE%\output\%FILE_NAME%.dmg"
+          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.zip"
+          SET "REMOTE_URL_DMG=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.dmg"
 
-          echo "== Téléchargement du fichier =="
           IF NOT EXIST "%WORKSPACE%\Build" mkdir "%WORKSPACE%\Build"
-
-          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH%" "%REMOTE_URL%"
-
-          echo "== Copie vers le dossier output =="
           IF NOT EXIST "%WORKSPACE%\output" mkdir "%WORKSPACE%\output"
-          copy "%LOCAL_PATH%" "%WORKSPACE%\output\%FILE_NAME%"
 
-          echo "== Suppression du fichier distant =="
-          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --quote "CWD /%FTP_PRIVATE_SHORT_PATH%" --quote "DELE %FILE_NAME%" ftp://%FTP_PRIVATE_SERVER%:2121
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_ZIP%" "%REMOTE_URL_ZIP%"
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_DMG%" "%REMOTE_URL_DMG%"
+          
+          echo "== Suppression des fichiers distants =="
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --quote "CWD /%FTP_PRIVATE_SHORT_PATH%" --quote "DELE %FILE_NAME%.zip" ftp://%FTP_PRIVATE_SERVER%:2121
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --quote "CWD /%FTP_PRIVATE_SHORT_PATH%" --quote "DELE %FILE_NAME%.dmg" ftp://%FTP_PRIVATE_SERVER%:2121
           
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
@@ -187,11 +189,23 @@ jobs:
           REM === Exécuter Tool4D ===
           "%WORKSPACE%\tools\tool4d_win\tool4d.exe" --dataless -s "%WORKSPACE%\tools\Build_Application\Project\Build_Application.4DProject" --user-param "%USERPARAM%"
 
-      - name: Rename archive and upload to FTP
+      - name: Detect Server folder name
+        id: detect_app_server
+        shell: cmd
+        run: |
+          cd /d "%GITHUB_WORKSPACE%\Build\Server"
+          for /d %%A in (*) do (
+            set "FOLDER_NAME=%%A"
+            goto :found
+          )
+          :found
+          echo FOLDER_NAME=%FOLDER_NAME%>> %GITHUB_OUTPUT%
+
+      - name: Rename archives
         shell: cmd
         run: |
           set "ZIPNAME=%APPNAME%_ClientWin_%VERSION4D%_${{ needs.Increment-version-number.outputs.version }}.zip"
-          move "%GITHUB_WORKSPACE%\Build\Client\update.win.4darchive" "%GITHUB_WORKSPACE%\output\%ZIPNAME%"
+          copy "%GITHUB_WORKSPACE%\Build\Server\${{ steps.detect_app_server.outputs.FOLDER_NAME }}\Upgrade4DClient\update.win.4darchive" "%GITHUB_WORKSPACE%\output\%ZIPNAME%"
           cd "%GITHUB_WORKSPACE%\Build\Server\"
           "c:\Program Files\7-Zip\7z.exe" a "${{ github.workspace }}/output/${{ vars.APPNAME }}_ServerWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip" *
 
@@ -206,9 +220,9 @@ jobs:
 
       - name: Cleaning
         run: |
-          rm -r ${{ github.workspace }}/output
-          rm -r ${{ github.workspace }}/Build
-        shell: bash
+          rmdir /s /q "%GITHUB_WORKSPACE%\output"
+          rmdir /s /q "%GITHUB_WORKSPACE%\Build"
+        shell: cmd
 
   Update-Badges:
     name: Update Badges
