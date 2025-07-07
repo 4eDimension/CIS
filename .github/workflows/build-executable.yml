@@ -217,7 +217,7 @@ jobs:
 
   Update-Badges:
     name: Update Badges
-    needs: [Build-Client-Server-on-Mac]
+    needs: [Build-Client-Server-on-Win]
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
