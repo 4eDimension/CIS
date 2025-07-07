@@ -145,7 +145,7 @@ jobs:
         run: |
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
           SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
-          SET "LOCAL_PATH=%WORKSPACE%\Build\update.mac.4darchive"
+          SET "LOCAL_PATH=%WORKSPACE%\Build\Client\update.mac.4darchive"
           SET "REMOTE_URL=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%"
 
           echo "== Téléchargement du fichier =="
