@@ -108,10 +108,10 @@ jobs:
           keychain: ${{ steps.keychain.outputs.KEYCHAIN_PATH }}
 
       - name: Rename archive and upload to FTP
-        shell: cmd
+        shell: bash
         run: |
-          ZIPNAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
-          mv "${GITHUB_WORKSPACE}\Build\Client\update.mac.4darchive" "${GITHUB_WORKSPACE}\Build\Client\$ZIPNAME"
+          ZIPNAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip
+          mv "${GITHUB_WORKSPACE}/Build/Client/update.mac.4darchive" "${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME"
           curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME ${{ secrets.FTP_PRIVATE_PATH }}
         
         env:
