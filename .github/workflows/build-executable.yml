@@ -222,6 +222,7 @@ jobs:
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
           SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\"
           SET "LOCAL_PATH_MACPROJECT=%LOCAL_PATH_MACPROJECT_FOLDER%${{ vars.APPNAME }}_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          SET "REMOTE_URL_MACPROJECT=${{ secrets.FTP_PRIVATE_PATH }}${{ vars.APPNAME }}.zip"
 
           IF NOT EXIST "%LOCAL_PATH_MACPROJECT_FOLDER%" mkdir "%LOCAL_PATH_MACPROJECT_FOLDER%"
           IF EXIST "%LOCAL_PATH_MACPROJECT%" del "%LOCAL_PATH_MACPROJECT%"
@@ -229,6 +230,13 @@ jobs:
           curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_MACPROJECT%" "%REMOTE_URL_MACPROJECT%"
           echo "== Décompression du projet compilé sur macOS =="
           "C:\Program Files\7-Zip\7z.exe" x "%LOCAL_PATH_MACPROJECT%" -o"%LOCAL_PATH_MACPROJECT_FOLDER%" -y
+          
+        env:
+          FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
+          FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
+          FTP_PRIVATE_PATH: ${{ secrets.FTP_PRIVATE_PATH }}
+          FTP_PRIVATE_SHORT_PATH: ${{ secrets.FTP_PRIVATE_SHORT_PATH }}
+          FTP_PRIVATE_SERVER: ${{ secrets.FTP_PRIVATE_SERVER }}
 
       - name: Build client & server windows
         id: backend
