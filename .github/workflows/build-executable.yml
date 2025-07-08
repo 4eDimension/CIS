@@ -43,17 +43,16 @@ jobs:
         id: check
         run: |
           if [ -f buildServerWin.json ]; then
-          value=$(jq -r '.withMacCompiledProject // false' buildServerWin.json)
-          if [ "$value" = "true" ]; then
-            echo "withMacCompiledProject=true" >> $GITHUB_OUTPUT
+            value=$(jq -r '.withMacCompiledProject // false | tostring' buildServerWin.json)
+            if [ "$value" = "true" ]; then
+              echo "withMacCompiledProject=true" >> $GITHUB_OUTPUT
+            else
+              echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
+            fi
           else
             echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
           fi
-          else
-          echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
-          fi
         shell: bash
-
 
   Build-releases:
     needs: [Increment-version-number, Check-withMacCompiledProject]
