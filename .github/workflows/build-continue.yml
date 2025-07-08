@@ -342,6 +342,22 @@ jobs:
           dmg_path: ${{ github.workspace }}/Build/release/${{ env.REPO_NAME }}.dmg
           keychain: ${{ steps.keychain.outputs.KEYCHAIN_PATH }}
 
+      - name: Read notarization status
+        id: read_status
+        run: |
+          status=$(cat "${{ github.workspace }}/notarization_status.txt")
+          echo "🛡️ Statut lu : $status"
+          echo "status=$status" >> $GITHUB_OUTPUT
+
+      - name: Final check
+        run: |
+          if [ "${{ steps.read_status.outputs.status }}" != "Accepted" ]; then
+            echo "❌ La notarisation a échoué : statut = ${{ steps.read_status.outputs.status }}"
+            exit 1
+          else
+            echo "✅ Notarisation confirmée avec succès"
+          fi
+
       - name: Zip artifact
         id: zip
         run: |
