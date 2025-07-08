@@ -31,9 +31,39 @@ jobs:
         with:
           mode: ${{ inputs.mode }}
 
+  Check-withMacCompiledProject:
+    name: Check withMacCompiledProject for windows server
+    runs-on: [self-hosted, linux]
+    outputs:
+      withMacCompiledProject: ${{ steps.check.outputs.withMacCompiledProject }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check withMacCompiledProject in buildServerWin.json
+        id: check
+        run: |
+          if [ -f buildServerWin.json ]; then
+          value=$(jq -r '.withMacCompiledProject // false' buildServerWin.json)
+          if [ "$value" = "true" ]; then
+            echo "withMacCompiledProject=true" >> $GITHUB_OUTPUT
+          else
+            echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
+          fi
+          else
+          echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
+          fi
+        shell: bash
+
+
+  Build-releases:
+    needs: [Increment-version-number, Check-withMacCompiledProject]
+    if: needs.Check-withMacCompiledProject.outputs.withMacCompiledProject == 'true'
+    uses: ./.github/workflows/build-continue.yml
+    secrets: inherit
+
   Build-Client-on-Mac:
     name: Build macOS Client
-    needs: Increment-version-number
+    needs: [Increment-version-number, Check-withMacCompiledProject]
     runs-on: [self-hosted, macOS]
     env:
       APPNAME: ${{ vars.APPNAME }}
@@ -123,9 +153,7 @@ jobs:
 
   Build-Client-Server-on-Win:
     name: Build Windows Client + Server
-    needs: 
-      - Increment-version-number
-      - Build-Client-on-Mac
+    needs: [Increment-version-number, Check-withMacCompiledProject, Build-Client-on-Mac]
     runs-on: [self-hosted, windows]
     env:
       APPNAME: ${{ vars.APPNAME }}
@@ -169,6 +197,21 @@ jobs:
           FTP_PRIVATE_SHORT_PATH: ${{ secrets.FTP_PRIVATE_SHORT_PATH }}
           FTP_PRIVATE_SERVER: ${{ secrets.FTP_PRIVATE_SERVER }}
 
+      - name: Download & Unzip Mac project
+        if: needs.Check-withMacCompiledProject.outputs.withMacCompiledProject == 'true'
+        shell: cmd
+        run: |
+          SET "WORKSPACE=%GITHUB_WORKSPACE%"
+          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\"
+          SET "LOCAL_PATH_MACPROJECT=%LOCAL_PATH_MACPROJECT_FOLDER%${{ vars.APPNAME }}_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+
+          IF NOT EXIST "%LOCAL_PATH_MACPROJECT_FOLDER%" mkdir "%LOCAL_PATH_MACPROJECT_FOLDER%"
+          IF EXIST "%LOCAL_PATH_MACPROJECT%" del "%LOCAL_PATH_MACPROJECT%"
+          echo "== Téléchargement du projet compilé sur macOS =="
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_MACPROJECT%" "%REMOTE_URL_MACPROJECT%"
+          echo "== Décompression du projet compilé sur macOS =="
+          "C:\Program Files\7-Zip\7z.exe" x "%LOCAL_PATH_MACPROJECT%" -o"%LOCAL_PATH_MACPROJECT_FOLDER%" -y
+
       - name: Build client & server windows
         id: backend
         shell: cmd
@@ -182,9 +225,16 @@ jobs:
           REM === Échapper les chemins pour JSON (\\ au lieu de \) ===
           SET "PROJECTFILE_JSON=%PROJECTFILE:\=\\%"
           SET "OUTPUTDIR_JSON=%OUTPUTDIR:\=\\%"
+          
+          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\"
 
           REM === Construire le JSON pour --user-param ===
-          SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\"}"
+          REM === Si le projet macOS est compilé, ajouter le path dans USERPARAM ===
+          IF ${{ needs.Check-withMacCompiledProject.outputs.withMacCompiledProject }} == 'true' (
+            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"macCompiledProject\":\"%LOCAL_PATH_MACPROJECT_FOLDER%\"}"
+          ) ELSE (
+            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\"}"
+          )
 
           REM === Exécuter Tool4D ===
           "%WORKSPACE%\tools\tool4d_win\tool4d.exe" --dataless -s "%WORKSPACE%\tools\Build_Application\Project\Build_Application.4DProject" --user-param "%USERPARAM%"
