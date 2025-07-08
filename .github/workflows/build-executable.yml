@@ -247,17 +247,17 @@ jobs:
           SET "PROJECTFILE=%WORKSPACE%\Project\${{ vars.APPNAME }}.4DProject"
           SET "OUTPUTDIR=%WORKSPACE%\Build"
           SET "BUILDNUMBER=${{ needs.Increment-version-number.outputs.version }}"
+          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\${{ vars.APPNAME }}.4dbase\"
 
           REM === Échapper les chemins pour JSON (\\ au lieu de \) ===
           SET "PROJECTFILE_JSON=%PROJECTFILE:\=\\%"
           SET "OUTPUTDIR_JSON=%OUTPUTDIR:\=\\%"
-          
-          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\${{ vars.APPNAME }}.4dbase\"
+          SET "LOCAL_PATH_MACPROJECT_FOLDER_JSON=%LOCAL_PATH_MACPROJECT_FOLDER:\=\\%"
 
           REM === Construire le JSON pour --user-param ===
           REM === Si le projet macOS est compilé, ajouter le path dans USERPARAM ===
           IF ${{ needs.Check-withMacCompiledProject.outputs.withMacCompiledProject }} == 'true' (
-            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"macCompiledProject\":\"%LOCAL_PATH_MACPROJECT_FOLDER%\"}"
+            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"macCompiledProject\":\"%LOCAL_PATH_MACPROJECT_FOLDER_JSON%\"}"
           ) ELSE (
             SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\"}"
           )
