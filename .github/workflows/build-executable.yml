@@ -256,13 +256,14 @@ jobs:
 
           REM === Construire le JSON pour --user-param ===
           REM === Si le projet macOS est compilé, ajouter le path dans USERPARAM ===
-          IF ${{ needs.Check-withMacCompiledProject.outputs.withMacCompiledProject }} == 'true' (
+          IF ${{ needs.Check-withMacCompiledProject.outputs.withMacCompiledProject }} == true (
             SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"macCompiledProject\":\"%LOCAL_PATH_MACPROJECT_FOLDER_JSON%\"}"
           ) ELSE (
             SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\"}"
           )
 
           REM === Exécuter Tool4D ===
+          echo "%WORKSPACE%\tools\tool4d_win\tool4d.exe" --dataless -s "%WORKSPACE%\tools\Build_Application\Project\Build_Application.4DProject" --user-param "%USERPARAM%"
           "%WORKSPACE%\tools\tool4d_win\tool4d.exe" --dataless -s "%WORKSPACE%\tools\Build_Application\Project\Build_Application.4DProject" --user-param "%USERPARAM%"
 
       - name: Detect Server folder name
