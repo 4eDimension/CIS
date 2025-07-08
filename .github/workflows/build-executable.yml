@@ -153,7 +153,7 @@ jobs:
 
   Build-Client-Server-on-Win:
     name: Build Windows Client + Server
-    needs: [Increment-version-number, Check-withMacCompiledProject, Build-Client-on-Mac]
+    needs: [Build-Client-on-Mac, Build-releases]
     runs-on: [self-hosted, windows]
     env:
       APPNAME: ${{ vars.APPNAME }}
