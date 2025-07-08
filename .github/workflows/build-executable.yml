@@ -48,13 +48,13 @@ jobs:
             value=$(jq -r '.withMacCompiledProject // false | tostring' buildServerWin.json)
             echo "Valeur brute lue : $value"
             if [ "$value" = "true" ]; then
-              echo "withMacCompiledProject=true" >> "$GITHUB_OUTPUT"
+              echo "withMacCompiledProject=true" >> $GITHUB_OUTPUT
             else
-              echo "withMacCompiledProject=false" >> "$GITHUB_OUTPUT"
+              echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
             fi
           else
             echo "Fichier non trouvé"
-            echo "withMacCompiledProject=false" >> "$GITHUB_OUTPUT"
+            echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
           fi
 
   Build-releases:
