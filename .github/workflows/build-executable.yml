@@ -252,7 +252,7 @@ jobs:
           SET "PROJECTFILE_JSON=%PROJECTFILE:\=\\%"
           SET "OUTPUTDIR_JSON=%OUTPUTDIR:\=\\%"
           
-          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\"
+          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\${{ vars.APPNAME }}.4dbase\"
 
           REM === Construire le JSON pour --user-param ===
           REM === Si le projet macOS est compilé, ajouter le path dans USERPARAM ===
