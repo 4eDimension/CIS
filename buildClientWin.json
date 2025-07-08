@@ -1,1 +1,1 @@
-{"startElevated":true,"buildName":"CIS Client","compilerOptions":{"targets":["x86_64_generic"]},"versioning":{"copyright":"copyright","companyName":"4D SAS"},"signApplication":{"macSignature":false}}
+{"startElevated":true,"buildName":"CIS Client", "publishName":"CIS Server","compilerOptions":{"targets":["x86_64_generic"]},"versioning":{"copyright":"copyright","companyName":"4D SAS"},"signApplication":{"macSignature":false}}
