@@ -299,33 +299,32 @@ jobs:
         shell: cmd
         run: |
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
-          SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}"
+          SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           SET "LOCAL_PATH_ZIP=%WORKSPACE%\Build\update.mac.4darchive"
-          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.zip"
+          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%"
 
           IF NOT EXIST "%WORKSPACE%\Build" mkdir "%WORKSPACE%\Build"
 
           curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_ZIP%" "%REMOTE_URL_ZIP%"
+        env:
+          FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
+          FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
 
       - name: Download Client Win
         shell: cmd
         run: |
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
-          SET "FILE_NAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}"
+          SET "FILE_NAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           SET "LOCAL_PATH_ZIP=%WORKSPACE%\Build\Client\update.win.4darchive"
-          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.zip"
+          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%"
 
           IF NOT EXIST "%WORKSPACE%\Build" mkdir "%WORKSPACE%\Build"
           IF NOT EXIST "%WORKSPACE%\Build\Client" mkdir "%WORKSPACE%\Build\Client"
 
           curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_ZIP%" "%REMOTE_URL_ZIP%"
-          
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
-          FTP_PRIVATE_PATH: ${{ secrets.FTP_PRIVATE_PATH }}
-          FTP_PRIVATE_SHORT_PATH: ${{ secrets.FTP_PRIVATE_SHORT_PATH }}
-          FTP_PRIVATE_SERVER: ${{ secrets.FTP_PRIVATE_SERVER }}
 
       - name: Download & Unzip Mac project
         if: needs.Check-withMacCompiledProject.outputs.withMacCompiledProject == 'true'
