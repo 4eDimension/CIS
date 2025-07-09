@@ -11,6 +11,11 @@ on:
           - minor
           - major
         required: true
+      forceClientAutoUpdate:
+        type: boolean
+        description: Force client auto update
+        default: true
+        required: true
 
 permissions:
   contents: write
