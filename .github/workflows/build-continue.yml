@@ -272,7 +272,7 @@ jobs:
       - name: Create manifest & info.plist
         id: manifest
         run: |
-          git pull origin main
+          git pull origin Separated-executable-build
           package_name=$(cat package.json | jq -r ".name")
           target_tag=$(cat package.json | jq -r ".version")
           creation_date=$(date +'%Y-%m-%d')
