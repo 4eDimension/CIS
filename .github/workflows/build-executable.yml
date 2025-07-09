@@ -237,15 +237,24 @@ jobs:
 
           REM === Lire le buildName depuis buildServerWin.json ===
           echo == Lecture du buildName depuis buildServerWin.json ==
-          for /f "usebackq tokens=*" %%A in (`jq -r ".buildName" "%WORKSPACE%\buildServerWin.json"`) do SET "BUILDNAME=%%A"
-          echo buildName lu : %BUILDNAME%
+          SET "BUILDNAME="
+          FOR /F "tokens=2 delims=:" %%A IN ('findstr "buildName" "%WORKSPACE%\buildServerWin.json"') DO (
+            SET "BUILDNAME=%%~A"
+          )
+
+          REM === Nettoyer la valeur (retirer les guillemets, virgule, espaces) ===
+          SETLOCAL ENABLEDELAYEDEXPANSION
+          SET "BUILDNAME=!BUILDNAME:~1!"
+          SET "BUILDNAME=!BUILDNAME:~0,-1!"
+          SET "BUILDNAME=!BUILDNAME:~,255!"
+          echo buildName lu : !BUILDNAME!
 
           REM === Renommer le fichier .4DZ ===
           SET "SOURCE_4DZ=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}.4dbase\${{ vars.APPNAME }}.4DZ"
-          SET "TARGET_4DZ=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}.4dbase\%BUILDNAME%.4DZ"
+          SET "TARGET_4DZ=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}.4dbase\!BUILDNAME!.4DZ"
 
           echo Renommage de %SOURCE_4DZ% en %TARGET_4DZ%
-          REN "%SOURCE_4DZ%" "%BUILDNAME%.4DZ"
+          REN "%SOURCE_4DZ%" "!BUILDNAME!.4DZ"
 
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
@@ -297,7 +306,7 @@ jobs:
       - name: Rename archives
         shell: cmd
         run: |
-          set "ZIPNAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          set "ZIPNAME=%APPNAME%_ClientWin_%VERSION4D%_${{ needs.Increment-version-number.outputs.version }}.zip"
           copy "%GITHUB_WORKSPACE%\Build\Server\${{ steps.detect_app_server.outputs.FOLDER_NAME }}\Upgrade4DClient\update.win.4darchive" "%GITHUB_WORKSPACE%\output\%ZIPNAME%"
           cd "%GITHUB_WORKSPACE%\Build\Server\"
           "c:\Program Files\7-Zip\7z.exe" a "${{ github.workspace }}/output/${{ vars.APPNAME }}_ServerWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip" *
@@ -311,11 +320,11 @@ jobs:
           body: ${{ vars.APPNAME }} v${{ needs.Increment-version-number.outputs.version }} (compiled for Intel and Silicon)
           file_glob: true
 
-      #- name: Cleaning
-      #  run: |
-      #    rmdir /s /q "%GITHUB_WORKSPACE%\output"
-      #    rmdir /s /q "%GITHUB_WORKSPACE%\Build"
-      #  shell: cmd
+      - name: Cleaning
+        run: |
+          rmdir /s /q "%GITHUB_WORKSPACE%\output"
+          rmdir /s /q "%GITHUB_WORKSPACE%\Build"
+        shell: cmd
 
   Update-Badges:
     name: Update Badges
