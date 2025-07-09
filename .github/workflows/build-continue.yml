@@ -236,8 +236,8 @@ jobs:
       - name: Get repository name
         run: echo "REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)" >> $GITHUB_ENV
 
-      - name: Build backend
-        id: backend
+      - name: Compilation
+        id: compilation
         run: |
           ${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d --dataless -s "${GITHUB_WORKSPACE}/tools/4DBuilder/Project/builder.4DProject" --user-param "{\"makeFile\":\"${GITHUB_WORKSPACE}/make.json\",\"verbose\":true,\"config\":\"release\",\"buildNumber\":\"1\",\"output\":\"${GITHUB_WORKSPACE}/Build\"}"
         shell: bash
