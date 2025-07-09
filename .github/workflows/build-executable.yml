@@ -637,7 +637,7 @@ jobs:
           color: green
           forceUpdate: true
 
-      - name: Delete FTP files
+      - name: Cleaning
         run: |
           FILE_NAME_WIN="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           FILE_NAME_MAC="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
