@@ -641,12 +641,11 @@ jobs:
           FTP_URL="ftp://${{ secrets.FTP_PRIVATE_SERVER }}:2121"
           FTP_PATH="${{ secrets.FTP_PRIVATE_SHORT_PATH }}"
           FTP_USER="${{ secrets.FTP_PRIVATE_LOGIN }}"
-          FTP_PASS="${{ secrets.FTP_PRIVATE_PASSWORD }}"
 
           for FILE in "$FILE_NAME_WIN" "$FILE_NAME_MAC"; do
             echo "Deleting $FILE from FTP..."
             curl --ftp-ssl-reqd \
-              --user $FTP_USER:'$FTP_PASS' \
+              --user $FTP_USER:'${{ secrets.FTP_PRIVATE_PASSWORD }}' \
               --quote "CWD /$FTP_PATH" \
               --quote "DELE $FILE" \
               "$FTP_URL"
