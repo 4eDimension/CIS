@@ -246,8 +246,8 @@ jobs:
           echo buildName lu : !BUILDNAME!
 
           REM Renommer le fichier .4DZ avec le buildName
-          SET "ORIG_FILE=%LOCAL_PATH_MACPROJECT_FOLDER%%{ { vars.APPNAME } }.4dbase\${{ vars.APPNAME }}.4DZ"
-          SET "NEW_FILE=%LOCAL_PATH_MACPROJECT_FOLDER%%{ { vars.APPNAME } }.4dbase\!BUILDNAME!.4DZ"
+          SET "ORIG_FILE=%LOCAL_PATH_MACPROJECT_FOLDER%${{ vars.APPNAME }}.4dbase\${{ vars.APPNAME }}.4DZ"
+          SET "NEW_FILE=%LOCAL_PATH_MACPROJECT_FOLDER%${{ vars.APPNAME }}.4dbase\!BUILDNAME!.4DZ"
 
           REM Afficher chemins pour debug
           echo Fichier original : !ORIG_FILE!
