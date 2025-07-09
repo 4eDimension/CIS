@@ -80,7 +80,8 @@ jobs:
             echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
           fi
 
-  Build-releases:
+  Generate-4DZ-ARM:
+    name: Generate macOS 4DZ ARM
     needs: [Increment-version-number, Check-withMacCompiledProject]
     if: needs.Check-withMacCompiledProject.outputs.withMacCompiledProject == 'true' && (inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on Windows')
     uses: ./.github/workflows/build-continue.yml
