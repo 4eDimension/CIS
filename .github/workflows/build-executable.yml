@@ -297,7 +297,7 @@ jobs:
       - name: Rename archives
         shell: cmd
         run: |
-          set "ZIPNAME=%APPNAME%_ClientWin_%VERSION4D%_${{ needs.Increment-version-number.outputs.version }}.zip"
+          set "ZIPNAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           copy "%GITHUB_WORKSPACE%\Build\Server\${{ steps.detect_app_server.outputs.FOLDER_NAME }}\Upgrade4DClient\update.win.4darchive" "%GITHUB_WORKSPACE%\output\%ZIPNAME%"
           cd "%GITHUB_WORKSPACE%\Build\Server\"
           "c:\Program Files\7-Zip\7z.exe" a "${{ github.workspace }}/output/${{ vars.APPNAME }}_ServerWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip" *
