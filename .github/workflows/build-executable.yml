@@ -650,7 +650,7 @@ jobs:
           for FILE in "$FILE_NAME_WIN" "$FILE_NAME_MAC"; do
             echo "Deleting $FILE from FTP..."
             curl --ftp-ssl-reqd \
-              --user "$FTP_USER:$FTP_PASS" \
+              --user $FTP_USER:'$FTP_PASS' \
               --quote "CWD /$FTP_PATH" \
               --quote "DELE $FILE" \
               "$FTP_URL"
