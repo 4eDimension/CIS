@@ -219,18 +219,34 @@ jobs:
         if: needs.Check-withMacCompiledProject.outputs.withMacCompiledProject == 'true'
         shell: cmd
         run: |
+          REM === Définir les chemins de base ===
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
-          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\"
-          SET "LOCAL_PATH_MACPROJECT=%LOCAL_PATH_MACPROJECT_FOLDER%${{ vars.APPNAME }}_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject"
+          SET "LOCAL_PATH_MACPROJECT=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           SET "REMOTE_URL_MACPROJECT=${{ secrets.FTP_PRIVATE_PATH }}${{ vars.APPNAME }}.zip"
 
+          REM === Créer le dossier s'il n'existe pas et supprimer l'archive si elle existe déjà ===
           IF NOT EXIST "%LOCAL_PATH_MACPROJECT_FOLDER%" mkdir "%LOCAL_PATH_MACPROJECT_FOLDER%"
           IF EXIST "%LOCAL_PATH_MACPROJECT%" del "%LOCAL_PATH_MACPROJECT%"
-          echo "== Téléchargement du projet compilé sur macOS =="
+
+          echo == Téléchargement du projet compilé sur macOS ==
           curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_MACPROJECT%" "%REMOTE_URL_MACPROJECT%"
-          echo "== Décompression du projet compilé sur macOS =="
+
+          echo == Décompression du projet compilé sur macOS ==
           "C:\Program Files\7-Zip\7z.exe" x "%LOCAL_PATH_MACPROJECT%" -o"%LOCAL_PATH_MACPROJECT_FOLDER%" -y
-          
+
+          REM === Lire le buildName depuis buildServerWin.json ===
+          echo == Lecture du buildName depuis buildServerWin.json ==
+          for /f "usebackq tokens=*" %%A in (`jq -r ".buildName" "%WORKSPACE%\buildServerWin.json"`) do SET "BUILDNAME=%%A"
+          echo buildName lu : %BUILDNAME%
+
+          REM === Renommer le fichier .4DZ ===
+          SET "SOURCE_4DZ=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}.4dbase\${{ vars.APPNAME }}.4DZ"
+          SET "TARGET_4DZ=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}.4dbase\%BUILDNAME%.4DZ"
+
+          echo Renommage de %SOURCE_4DZ% en %TARGET_4DZ%
+          REN "%SOURCE_4DZ%" "%BUILDNAME%.4DZ"
+
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
@@ -295,11 +311,11 @@ jobs:
           body: ${{ vars.APPNAME }} v${{ needs.Increment-version-number.outputs.version }} (compiled for Intel and Silicon)
           file_glob: true
 
-      - name: Cleaning
-        run: |
-          rmdir /s /q "%GITHUB_WORKSPACE%\output"
-          rmdir /s /q "%GITHUB_WORKSPACE%\Build"
-        shell: cmd
+      #- name: Cleaning
+      #  run: |
+      #    rmdir /s /q "%GITHUB_WORKSPACE%\output"
+      #    rmdir /s /q "%GITHUB_WORKSPACE%\Build"
+      #  shell: cmd
 
   Update-Badges:
     name: Update Badges
