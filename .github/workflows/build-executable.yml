@@ -444,7 +444,7 @@ jobs:
             ftp://${{ secrets.FTP_PRIVATE_SERVER }}:2121
         shell: bash
 
-      - name: Build client & server mac
+      - name: Build server mac
         id: backend
         shell: bash
         run: |
@@ -502,12 +502,27 @@ jobs:
           dmg_path: ${{ github.workspace }}/Build/Server/${{ steps.detect_app.outputs.DMG_NAME }}
           keychain: ${{ steps.keychain.outputs.KEYCHAIN_PATH }}
 
-      - name: Create archives
+      - name: Read notarization status
+        id: read_status
         run: |
-          cd "${GITHUB_WORKSPACE}/Build/Server"
-          app_bundle=$(ls -d *.app | head -n 1)
-          zip -r "${GITHUB_WORKSPACE}/output/${{ vars.APPNAME }}_ServerMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip" "$app_bundle"
+          status=$(cat "${{ github.workspace }}/notarization_status.txt")
+          echo "🛡️ Statut lu : $status"
+          echo "status=$status" >> $GITHUB_OUTPUT
+
+      - name: Final check
+        run: |
+          if [ "${{ steps.read_status.outputs.status }}" != "Accepted" ]; then
+            echo "❌ La notarisation a échoué : statut = ${{ steps.read_status.outputs.status }}"
+            exit 1
+          else
+            echo "✅ Notarisation confirmée avec succès"
+          fi
+
+      - name: Rename and deplace DMG
         shell: bash
+        run: |
+          DMGNAME=${{ vars.APPNAME }}_ServerMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
+          mv "${GITHUB_WORKSPACE}/Build/Server/${{ steps.detect_app.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/output/$DMGNAME"
 
       - name: Upload assets
         uses: svenstaro/upload-release-action@v2
