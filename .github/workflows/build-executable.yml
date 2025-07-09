@@ -252,8 +252,8 @@ jobs:
         shell: cmd
         run: |
           set "ZIPNAME=%APPNAME%_ClientWin_%VERSION4D%_${{ needs.Increment-version-number.outputs.version }}.zip"
-          move "%GITHUB_WORKSPACE%\Build\Client\update.win.4darchive" "%GITHUB_WORKSPACE%\Build\Client\%ZIPNAME%"
-          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --upload-file "%GITHUB_WORKSPACE%\Build\Client\%ZIPNAME%" %FTP_PRIVATE_PATH%
+          move "%GITHUB_WORKSPACE%\Build\Client\update.win.4darchive" "%GITHUB_WORKSPACE%\Build\%ZIPNAME%"
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --upload-file "%GITHUB_WORKSPACE%\Build\%ZIPNAME%" %FTP_PRIVATE_PATH%
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
@@ -586,7 +586,7 @@ jobs:
 
   Update-Badges:
     name: Update Badges
-    needs: [Build-Server-on-Win, Build-Server-on-Mac]
+    needs: [Increment-version-number, Build-Server-on-Win, Build-Server-on-Mac]
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
