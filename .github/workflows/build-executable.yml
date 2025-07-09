@@ -273,7 +273,7 @@ jobs:
 
   Build-Server-on-Win:
     name: Build Windows Server
-    needs: [Increment-version-number, Build-Client-on-Mac, Build-Client-on-Win, Build-releases, Check-withMacCompiledProject]
+    needs: [Increment-version-number, Build-Client-on-Mac, Build-Client-on-Win, Generate-4DZ-ARM, Check-withMacCompiledProject]
     if: inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on Windows'
     runs-on: [self-hosted, windows]
     env:
