@@ -247,7 +247,7 @@ jobs:
           SET "PROJECTFILE=%WORKSPACE%\Project\${{ vars.APPNAME }}.4DProject"
           SET "OUTPUTDIR=%WORKSPACE%\Build"
           SET "BUILDNUMBER=${{ needs.Increment-version-number.outputs.version }}"
-          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\${{ vars.APPNAME }}.4dbase\"
+          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\${{ vars.APPNAME }}.4dbase"
 
           REM === Échapper les chemins pour JSON (\\ au lieu de \) ===
           SET "PROJECTFILE_JSON=%PROJECTFILE:\=\\%"
