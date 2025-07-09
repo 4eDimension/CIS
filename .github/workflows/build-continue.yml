@@ -277,7 +277,10 @@ jobs:
           target_tag=$(cat package.json | jq -r ".version")
           creation_date=$(date +'%Y-%m-%d')
           version4d="${{ vars.VERSION4D }}"
-          if [[ "$version4d" =~ ^[0-9]+$ ]]; then
+          if [[ "$version4d" == "main" ]]; then
+            # Cas spécial : version main
+            tag_value="main"
+          elif [[ "$version4d" =~ ^[0-9]+$ ]]; then
             # Cas LTS : 20 => 20.0.0
             tag_value="${version4d}.0.0"
           elif [[ "$version4d" =~ ^([0-9]+)R([0-9]+)$ ]]; then
