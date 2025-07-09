@@ -221,41 +221,45 @@ jobs:
         run: |
           REM === Définir les chemins de base ===
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
-          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject"
-          SET "LOCAL_PATH_MACPROJECT=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          SET "LOCAL_PATH_MACPROJECT_FOLDER=%WORKSPACE%\Build\MacCompiledProject\"
+          SET "LOCAL_PATH_MACPROJECT=%LOCAL_PATH_MACPROJECT_FOLDER%${{ vars.APPNAME }}_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           SET "REMOTE_URL_MACPROJECT=${{ secrets.FTP_PRIVATE_PATH }}${{ vars.APPNAME }}.zip"
+          SET "JSON_FILE=%WORKSPACE%\buildServerWin.json"
+          SET "ORIG_FILE=%LOCAL_PATH_MACPROJECT_FOLDER%%{ { vars.APPNAME } }.4dbase\${{ vars.APPNAME }}.4DZ"
 
-          REM === Créer le dossier s'il n'existe pas et supprimer l'archive si elle existe déjà ===
           IF NOT EXIST "%LOCAL_PATH_MACPROJECT_FOLDER%" mkdir "%LOCAL_PATH_MACPROJECT_FOLDER%"
           IF EXIST "%LOCAL_PATH_MACPROJECT%" del "%LOCAL_PATH_MACPROJECT%"
-
-          echo == Téléchargement du projet compilé sur macOS ==
+          echo "== Téléchargement du projet compilé sur macOS =="
           curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_MACPROJECT%" "%REMOTE_URL_MACPROJECT%"
-
-          echo == Décompression du projet compilé sur macOS ==
+          echo "== Décompression du projet compilé sur macOS =="
           "C:\Program Files\7-Zip\7z.exe" x "%LOCAL_PATH_MACPROJECT%" -o"%LOCAL_PATH_MACPROJECT_FOLDER%" -y
 
-          REM === Lire le buildName depuis buildServerWin.json ===
-          echo == Lecture du buildName depuis buildServerWin.json ==
+          echo "== Lecture du buildName depuis buildServerWin.json =="
+          SETLOCAL EnableDelayedExpansion
           SET "BUILDNAME="
-          FOR /F "tokens=2 delims=:" %%A IN ('findstr "buildName" "%WORKSPACE%\buildServerWin.json"') DO (
-            SET "BUILDNAME=%%~A"
+          FOR /F "usebackq tokens=2 delims=:" %%A IN (`findstr /i "buildName" "%JSON_FILE%"`) DO (
+            SET "RAW_NAME=%%A"
           )
-
-          REM === Nettoyer la valeur (retirer les guillemets, virgule, espaces) ===
-          SETLOCAL ENABLEDELAYEDEXPANSION
-          SET "BUILDNAME=!BUILDNAME:~1!"
-          SET "BUILDNAME=!BUILDNAME:~0,-1!"
-          SET "BUILDNAME=!BUILDNAME:~,255!"
+          REM Nettoyer guillemets et tout ce qui suit une virgule
+          SET "BUILDNAME=!RAW_NAME:"=!"
+          FOR /F "tokens=1 delims=," %%B IN ("!BUILDNAME!") DO SET "BUILDNAME=%%B"
           echo buildName lu : !BUILDNAME!
 
-          REM === Renommer le fichier .4DZ ===
-          SET "SOURCE_4DZ=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}.4dbase\${{ vars.APPNAME }}.4DZ"
-          SET "TARGET_4DZ=%LOCAL_PATH_MACPROJECT_FOLDER%\${{ vars.APPNAME }}.4dbase\!BUILDNAME!.4DZ"
+          REM Renommer le fichier .4DZ avec le buildName
+          SET "ORIG_FILE=%LOCAL_PATH_MACPROJECT_FOLDER%%{ { vars.APPNAME } }.4dbase\${{ vars.APPNAME }}.4DZ"
+          SET "NEW_FILE=%LOCAL_PATH_MACPROJECT_FOLDER%%{ { vars.APPNAME } }.4dbase\!BUILDNAME!.4DZ"
 
-          echo Renommage de %SOURCE_4DZ% en %TARGET_4DZ%
-          REN "%SOURCE_4DZ%" "!BUILDNAME!.4DZ"
+          REM Afficher chemins pour debug
+          echo Fichier original : !ORIG_FILE!
+          echo Nouveau fichier : !NEW_FILE!
 
+          IF EXIST "!ORIG_FILE!" (
+            REN "!ORIG_FILE!" "!BUILDNAME!.4DZ"
+            echo Fichier renommé avec succès
+          ) ELSE (
+            echo Fichier original introuvable, renommage impossible
+          )
+          ENDLOCAL
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
