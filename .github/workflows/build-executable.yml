@@ -184,15 +184,27 @@ jobs:
         shell: bash
         run: |
           ZIPNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip
-          DMGNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
           mv "${GITHUB_WORKSPACE}/Build/Client/update.mac.4darchive" "${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME"
           curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME ${{ secrets.FTP_PRIVATE_PATH }}
-          mv "${GITHUB_WORKSPACE}/Build/Client/${{ steps.detect_app_client.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/Build/Client/$DMGNAME"
-          curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$DMGNAME ${{ secrets.FTP_PRIVATE_PATH }}
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
           FTP_PRIVATE_PATH: ${{ secrets.FTP_PRIVATE_PATH }}
+
+      - name: Rename and deplace DMG
+        shell: bash
+        run: |
+          DMGNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
+          mv "${GITHUB_WORKSPACE}/Build/Client/${{ steps.detect_app_client.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/output/$DMGNAME"
+
+      - name: Upload asset
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ github.workspace }}/output/*
+          tag: ${{ needs.Increment-version-number.outputs.version }}
+          body: ${{ vars.APPNAME }} v${{ needs.Increment-version-number.outputs.version }} (compiled for Intel and Silicon)
+          file_glob: true
 
   Build-Client-on-Win:
     name: Build Windows Client
@@ -244,6 +256,21 @@ jobs:
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
           FTP_PRIVATE_PATH: ${{ secrets.FTP_PRIVATE_PATH }}
 
+      - name: Create client build zip
+        shell: cmd
+        run: |
+          cd "%GITHUB_WORKSPACE%\Build\Client\"
+          "c:\Program Files\7-Zip\7z.exe" a "${{ github.workspace }}/output/${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip" *
+
+      - name: Upload asset
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ github.workspace }}/output/*
+          tag: ${{ needs.Increment-version-number.outputs.version }}
+          body: ${{ vars.APPNAME }} v${{ needs.Increment-version-number.outputs.version }} (compiled for Intel and Silicon)
+          file_glob: true
+
   Build-Server-on-Win:
     name: Build Windows Server
     needs: [Increment-version-number, Build-Client-on-Mac, Build-Client-on-Win, Build-releases, Check-withMacCompiledProject]
@@ -264,21 +291,30 @@ jobs:
           ref: ${{ vars.VERSION4D }}
           path: tools
 
-      - name: Download and delete FTP file
+      - name: Download Client Mac
         shell: cmd
         run: |
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
           SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}"
           SET "LOCAL_PATH_ZIP=%WORKSPACE%\Build\update.mac.4darchive"
-          SET "LOCAL_PATH_DMG=%WORKSPACE%\output\%FILE_NAME%.dmg"
           SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.zip"
-          SET "REMOTE_URL_DMG=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.dmg"
 
           IF NOT EXIST "%WORKSPACE%\Build" mkdir "%WORKSPACE%\Build"
-          IF NOT EXIST "%WORKSPACE%\output" mkdir "%WORKSPACE%\output"
 
           curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_ZIP%" "%REMOTE_URL_ZIP%"
-          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_DMG%" "%REMOTE_URL_DMG%"
+
+      - name: Download Client Win
+        shell: cmd
+        run: |
+          SET "WORKSPACE=%GITHUB_WORKSPACE%"
+          SET "FILE_NAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}"
+          SET "LOCAL_PATH_ZIP=%WORKSPACE%\Build\Client\update.win.4darchive"
+          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.zip"
+
+          IF NOT EXIST "%WORKSPACE%\Build" mkdir "%WORKSPACE%\Build"
+          IF NOT EXIST "%WORKSPACE%\Build\Client" mkdir "%WORKSPACE%\Build\Client"
+
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_ZIP%" "%REMOTE_URL_ZIP%"
           
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
@@ -379,7 +415,7 @@ jobs:
           :found
           echo FOLDER_NAME=%FOLDER_NAME%>> %GITHUB_OUTPUT%
 
-      - name: Rename archives
+      - name: Create client build zip
         shell: cmd
         run: |
           cd "%GITHUB_WORKSPACE%\Build\Server\"
@@ -420,7 +456,7 @@ jobs:
           ref: ${{ vars.VERSION4D }}
           path: tools
 
-      - name: Download and delete FTP file
+      - name: Download Client Win
         run: |
           FILE_NAME="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           LOCAL_PATH="${{ github.workspace }}/Build/update.win.4darchive"
@@ -432,17 +468,21 @@ jobs:
           curl --ftp-ssl-reqd \
             --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' \
             --output "$LOCAL_PATH" "$REMOTE_URL"
+        shell: bash
 
-          echo "== Copie vers le dossier output =="
-          mkdir -p "${{ github.workspace }}/output"
-          cp "$LOCAL_PATH" "${{ github.workspace }}/output/$FILE_NAME"
+      - name: Download Client Mac
+        run: |
+          FILE_NAME="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          LOCAL_PATH="${{ github.workspace }}/Build/Client/update.mac.4darchive"
+          REMOTE_URL="${{ secrets.FTP_PRIVATE_PATH }}$FILE_NAME"
 
-          echo "== Suppression du fichier distant =="
+          echo "== Téléchargement du fichier =="
+          mkdir -p "${{ github.workspace }}/Build"
+          mkdir -p "${{ github.workspace }}/Build/Client"
+
           curl --ftp-ssl-reqd \
             --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' \
-            --quote "CWD /${{ secrets.FTP_PRIVATE_SHORT_PATH }}" \
-            --quote "DELE $FILE_NAME" \
-            ftp://${{ secrets.FTP_PRIVATE_SERVER }}:2121
+            --output "$LOCAL_PATH" "$REMOTE_URL"
         shell: bash
 
       - name: Build server mac
@@ -592,3 +632,23 @@ jobs:
           message: ${{ steps.downloads.outputs.total_downloads }}
           color: green
           forceUpdate: true
+
+      - name: Delete FTP files
+        run: |
+          FILE_NAME_WIN="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          FILE_NAME_MAC_ZIP="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+
+          FTP_URL="ftp://${{ secrets.FTP_PRIVATE_SERVER }}:2121"
+          FTP_PATH="${{ secrets.FTP_PRIVATE_SHORT_PATH }}"
+          FTP_USER="${{ secrets.FTP_PRIVATE_LOGIN }}"
+          FTP_PASS="${{ secrets.FTP_PRIVATE_PASSWORD }}"
+
+          for FILE in "$FILE_NAME_WIN" "$FILE_NAME_MAC_ZIP"; do
+            echo "Deleting $FILE from FTP..."
+            curl --ftp-ssl-reqd \
+              --user "$FTP_USER:$FTP_PASS" \
+              --quote "CWD /$FTP_PATH" \
+              --quote "DELE $FILE" \
+              "$FTP_URL"
+          done
+        shell: bash
