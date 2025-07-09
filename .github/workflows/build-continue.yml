@@ -172,7 +172,7 @@ jobs:
     steps:
       - name: Cleaning
         run: |
-          rm -r ${GITHUB_WORKSPACE}
+          rm -rf ${GITHUB_WORKSPACE}
           mkdir ${GITHUB_WORKSPACE}
         shell: bash
         

@@ -54,7 +54,7 @@ jobs:
           mode: ${{ inputs.mode }}
 
   Check-withMacCompiledProject:
-    name: Check withMacCompiledProject for windows server
+    name: Check if 4DZ ARM is required
     runs-on: [self-hosted, linux]
     if: inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on Windows'
     outputs:
@@ -211,7 +211,7 @@ jobs:
 
   Build-Client-on-Win:
     name: Build Windows Client
-    needs: Increment-version-number
+    needs: [Increment-version-number, Check-withMacCompiledProject]
     if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on Windows'
     runs-on: [self-hosted, windows]
     env:
@@ -277,7 +277,7 @@ jobs:
 
   Build-Server-on-Win:
     name: Build Windows Server
-    needs: [Increment-version-number, Build-Client-on-Mac, Build-Client-on-Win, Generate-4DZ-ARM, Check-withMacCompiledProject]
+    needs: [Increment-version-number, Check-withMacCompiledProject, Build-Client-on-Mac, Build-Client-on-Win]
     if: inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on Windows'
     runs-on: [self-hosted, windows]
     env:
@@ -441,7 +441,7 @@ jobs:
 
   Build-Server-on-Mac:
     name: Build macOS Server
-    needs: [Increment-version-number, Build-Client-on-Mac, Build-Client-on-Win]
+    needs: [Increment-version-number, Check-withMacCompiledProject, Build-Client-on-Mac, Build-Client-on-Win]
     if: inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on macOS'
     runs-on: [self-hosted, macOS]
     env:
@@ -580,8 +580,8 @@ jobs:
 
       - name: Cleaning
         run: |
-          rm -r ${{ github.workspace }}/output
-          rm -r ${{ github.workspace }}/Build
+          rm -rf ${{ github.workspace }}/output
+          rm -rf ${{ github.workspace }}/Build
         shell: bash
 
   Update-Badges:
@@ -640,14 +640,14 @@ jobs:
       - name: Delete FTP files
         run: |
           FILE_NAME_WIN="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
-          FILE_NAME_MAC_ZIP="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          FILE_NAME_MAC="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
 
           FTP_URL="ftp://${{ secrets.FTP_PRIVATE_SERVER }}:2121"
           FTP_PATH="${{ secrets.FTP_PRIVATE_SHORT_PATH }}"
           FTP_USER="${{ secrets.FTP_PRIVATE_LOGIN }}"
           FTP_PASS="${{ secrets.FTP_PRIVATE_PASSWORD }}"
 
-          for FILE in "$FILE_NAME_WIN" "$FILE_NAME_MAC_ZIP"; do
+          for FILE in "$FILE_NAME_WIN" "$FILE_NAME_MAC"; do
             echo "Deleting $FILE from FTP..."
             curl --ftp-ssl-reqd \
               --user "$FTP_USER:$FTP_PASS" \
