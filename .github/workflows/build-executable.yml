@@ -400,7 +400,7 @@ jobs:
         shell: cmd
 
   Build-Server-on-Mac:
-    name: Build macOS Client + Server
+    name: Build macOS Server
     needs: [Increment-version-number, Build-Client-on-Mac, Build-Client-on-Win]
     if: inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on macOS'
     runs-on: [self-hosted, macOS]
