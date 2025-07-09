@@ -184,6 +184,8 @@ jobs:
         shell: bash
         run: |
           ZIPNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip
+          mkdir -p "${GITHUB_WORKSPACE}/Build"
+          mkdir -p "${GITHUB_WORKSPACE}/Build/Client"
           mv "${GITHUB_WORKSPACE}/Build/Client/update.mac.4darchive" "${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME"
           curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME ${{ secrets.FTP_PRIVATE_PATH }}
         env:
@@ -195,6 +197,7 @@ jobs:
         shell: bash
         run: |
           DMGNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
+          mkdir -p "${GITHUB_WORKSPACE}/output"
           mv "${GITHUB_WORKSPACE}/Build/Client/${{ steps.detect_app_client.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/output/$DMGNAME"
 
       - name: Upload asset
@@ -259,6 +262,7 @@ jobs:
       - name: Create client build zip
         shell: cmd
         run: |
+          IF NOT EXIST "%GITHUB_WORKSPACE%\output" mkdir "%GITHUB_WORKSPACE%\output"
           cd "%GITHUB_WORKSPACE%\Build\Client\"
           "c:\Program Files\7-Zip\7z.exe" a "${{ github.workspace }}/output/${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip" *
 
@@ -563,6 +567,7 @@ jobs:
         shell: bash
         run: |
           DMGNAME=${{ vars.APPNAME }}_ServerMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
+          mkdir -p "${GITHUB_WORKSPACE}/output"
           mv "${GITHUB_WORKSPACE}/Build/Server/${{ steps.detect_app.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/output/$DMGNAME"
 
       - name: Upload assets
