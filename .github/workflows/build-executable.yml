@@ -94,7 +94,7 @@ jobs:
           TOOL="${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d"
           PROJECT="${GITHUB_WORKSPACE}/Project/${{ vars.APPNAME }}.4DProject"
           OUTPUT="${GITHUB_WORKSPACE}/Build"
-          PARAM="{\"projectPath\":\"$PROJECT\",\"verbose\":true,\"buildClient\":true,\"buildServer\":false,\"buildNumber\":\"$BUILDNUMBER\",\"output\":\"$OUTPUT\",\"forceClientUpdate\":\${{ inputs.forceClientAutoUpdate }}}"
+          PARAM="{\"projectPath\":\"$PROJECT\",\"verbose\":true,\"buildClient\":true,\"buildServer\":false,\"buildNumber\":\"$BUILDNUMBER\",\"output\":\"$OUTPUT\",\"forceClientUpdate\":${{ inputs.forceClientAutoUpdate }}}"
 
           "$TOOL" --dataless -s "${GITHUB_WORKSPACE}/tools/Build_Application/Project/Build_Application.4DProject" --user-param "$PARAM"
 
@@ -291,9 +291,9 @@ jobs:
           REM === Construire le JSON pour --user-param ===
           REM === Si le projet macOS est compilé, ajouter le path dans USERPARAM ===
           IF ${{ needs.Check-withMacCompiledProject.outputs.withMacCompiledProject }} == true (
-            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"forceClientUpdate\":\${{ inputs.forceClientAutoUpdate }},\"macCompiledProject\":\"%LOCAL_PATH_MACPROJECT_FOLDER_JSON%\"}"
+            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"forceClientUpdate\":${{ inputs.forceClientAutoUpdate }},\"macCompiledProject\":\"%LOCAL_PATH_MACPROJECT_FOLDER_JSON%\"}"
           ) ELSE (
-            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"forceClientUpdate\":\${{ inputs.forceClientAutoUpdate }}}"
+            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"forceClientUpdate\":${{ inputs.forceClientAutoUpdate }}}"
           )
 
           REM === Exécuter Tool4D ===
