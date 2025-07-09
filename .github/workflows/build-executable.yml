@@ -13,7 +13,7 @@ on:
         required: true
       forceClientAutoUpdate:
         type: boolean
-        description: Force client auto update
+        description: Force clients auto update
         default: true
         required: true
 
