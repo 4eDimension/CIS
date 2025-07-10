@@ -362,7 +362,7 @@ jobs:
         id: zip
         run: |
           cd ${{ github.workspace }}/Build/release/
-          zip -r ${{ github.workspace }}/Build/release/${{ vars.APPNAME }}.zip ./${{ env.REPO_NAME }}.4dbase/*
+          zip -r ${{ github.workspace }}/Build/release/${{ vars.APPNAME }}.zip ./${REPO_NAME}.4dbase/*
         shell: bash
 
       - name: Upload FTP
