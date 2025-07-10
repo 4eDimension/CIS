@@ -233,34 +233,25 @@ jobs:
         id: create_make_json
         uses: 4eDimension/Tools/.github/actions/build-create-makejson@main
 
-      - name: Get repository name
-        run: echo "REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)" >> $GITHUB_ENV
-
-      - name: Compilation
-        id: compilation
+      - name: Get repository name and project name
         run: |
-          ${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d --dataless -s "${GITHUB_WORKSPACE}/tools/4DBuilder/Project/builder.4DProject" --user-param "{\"makeFile\":\"${GITHUB_WORKSPACE}/make.json\",\"verbose\":true,\"config\":\"release\",\"buildNumber\":\"1\",\"output\":\"${GITHUB_WORKSPACE}/Build\"}"
-        shell: bash
-
-      - name: "Extract 4D project name"
-        id: extract_project_name
-        run: |
+          echo "REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)" >> $GITHUB_ENV
           PROJECT_PATH=$(find Project -name "*.4DProject" | head -n 1)
           PROJECT_NAME=$(basename "$PROJECT_PATH" .4DProject)
           echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
 
-      - name: "Check 4DZ file existence"
-        id: check_file
-        uses: andstor/file-existence-action@v3
-        with:
-          files: ${{ github.workspace }}/Build/release/${{ env.REPO_NAME }}.4dbase/${{ env.PROJECT_NAME }}.4DZ
-
-      - name: File doesn't exist
-        if: steps.check_file.outputs.files_exists == 'false'
-        # Only runs if the file doesn't exist
+      - name: Compilation
         run: |
-          echo Build failed!
-          exit 1
+          # Compilation
+          ${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d --dataless -s "${GITHUB_WORKSPACE}/tools/4DBuilder/Project/builder.4DProject" --user-param "{\"makeFile\":\"${GITHUB_WORKSPACE}/make.json\",\"verbose\":true,\"config\":\"release\",\"buildNumber\":\"1\",\"output\":\"${GITHUB_WORKSPACE}/Build\"}"
+
+          # Check file existence
+          TARGET_FILE="${GITHUB_WORKSPACE}/Build/release/${env.REPO_NAME}.4dbase/${env.PROJECT_NAME}.4DZ"
+          if [ ! -f "$TARGET_FILE" ]; then
+            echo "Build failed: $TARGET_FILE not found."
+            exit 1
+          fi
+        shell: bash
 
       - name: Check package.json or create it
         id: create_package_json
