@@ -1,4 +1,4 @@
-name: Trigger All Release Combinations
+name: Trigger All Release Combinations (mode = patch)
 
 on:
   workflow_dispatch:
@@ -18,13 +18,9 @@ jobs:
           - Build only on Windows
           - Build on both macOS and Windows
 
-    runs-on: [self-hosted, linux]
-
-    steps:
-      - name: Call the release workflow
-        uses: ./.github/workflows/build-executable.yml
-        with:
-          mode: patch
-          forceClientAutoUpdate: ${{ matrix.forceClientAutoUpdate }}
-          buildClient: ${{ matrix.buildClient }}
-          buildServer: ${{ matrix.buildServer }}
+    uses: ./.github/workflows/build-executable.yml
+    with:
+      mode: patch
+      forceClientAutoUpdate: ${{ matrix.forceClientAutoUpdate }}
+      buildClient: ${{ matrix.buildClient }}
+      buildServer: ${{ matrix.buildServer }}
