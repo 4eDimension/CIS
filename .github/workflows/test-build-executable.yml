@@ -1,15 +1,15 @@
-name: Trigger All Release Combinations (mode = patch)
+name: Test Build Executable
 
 on:
   workflow_dispatch:
 
 jobs:
-  trigger-combinations:
+  build-execution:
     strategy:
       max-parallel: 1
       matrix:
         forceClientAutoUpdate: [true, false]
-        buildClient: 
+        buildClient:
           - Build only on macOS
           - Build only on Windows
           - Build on both macOS and Windows
@@ -18,9 +18,12 @@ jobs:
           - Build only on Windows
           - Build on both macOS and Windows
 
-    uses: ./.github/workflows/build-executable.yml
-    with:
-      mode: patch
-      forceClientAutoUpdate: ${{ matrix.forceClientAutoUpdate }}
-      buildClient: ${{ matrix.buildClient }}
-      buildServer: ${{ matrix.buildServer }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: test build executable
+        uses: ./.github/workflows/build-executable.yml@Separated-executable-build
+        with:
+          mode: patch
+          forceClientAutoUpdate: ${{ matrix.forceClientAutoUpdate }}
+          buildClient: ${{ matrix.buildClient }}
+          buildServer: ${{ matrix.buildServer }}
