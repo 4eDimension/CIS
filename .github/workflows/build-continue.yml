@@ -250,12 +250,12 @@ jobs:
             --user-param "{\"makeFile\":\"${GITHUB_WORKSPACE}/make.json\",\"verbose\":true,\"config\":\"release\",\"buildNumber\":\"1\",\"output\":\"${GITHUB_WORKSPACE}/Build\"}"
 
           # Vérification de l'existence du fichier .4DZ
-          TARGET_FILE="${GITHUB_WORKSPACE}/Build/release/${{ env.REPO_NAME }}.4dbase/${{ env.PROJECT_NAME }}.4DZ"
+          TARGET_FILE="${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/${PROJECT_NAME}.4DZ"
           if [ ! -f "$TARGET_FILE" ]; then
-            echo "❌ Compilation failed: $TARGET_FILE not found."
+            echo "❌ Compilation failed: $TARGET_FILE not found"
             exit 1
           else
-            echo "✅ Compilation succeeded: $TARGET_FILE exists."
+            echo "✅ Compilation succeeded: $TARGET_FILE exists"
           fi
         shell: bash
 
@@ -289,7 +289,7 @@ jobs:
             echo "Format de version 4D non reconnu : $version4d"
             exit 1
           fi
-          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${{ env.REPO_NAME }}.4dbase/Resources/manifest.json
+          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/Resources/manifest.json
           {
             "name": "$package_name",
             "version": "$target_tag",
@@ -297,7 +297,7 @@ jobs:
             "tag": "$tag_value"
           }
           EOF
-          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${{ env.REPO_NAME }}.4dbase/Resources/InfoPlist.strings
+          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/Resources/InfoPlist.strings
           /* Localized versions of Info.plist keys */
 
           CFBundleName = "$package_name";
