@@ -586,6 +586,7 @@ jobs:
 
   Update-Badges:
     name: Update Badges
+    if: always()
     needs: [Increment-version-number, Build-Server-on-Win, Build-Server-on-Mac]
     runs-on: [self-hosted, linux]
     steps:
@@ -638,7 +639,8 @@ jobs:
           forceUpdate: true
 
   Cleaning:
-    name: Update Badges
+    name: Cleaning
+    if: always()
     needs: [Increment-version-number, Build-Server-on-Win, Build-Server-on-Mac, Update-Badges]
     runs-on: [self-hosted, linux]
     steps:
