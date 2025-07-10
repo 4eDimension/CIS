@@ -233,23 +233,29 @@ jobs:
         id: create_make_json
         uses: 4eDimension/Tools/.github/actions/build-create-makejson@main
 
-      - name: Get repository name and project name
+      - name: Compilation
+        id: compilation
         run: |
-          echo "REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)" >> $GITHUB_ENV
+          # Récupération du nom du dépôt et du projet
+          REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)
           PROJECT_PATH=$(find Project -name "*.4DProject" | head -n 1)
           PROJECT_NAME=$(basename "$PROJECT_PATH" .4DProject)
-          echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
+          echo "Nom du dépôt : $REPO_NAME"
+          echo "Nom du projet : $PROJECT_NAME"
 
-      - name: Compilation
-        run: |
           # Compilation
-          ${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d --dataless -s "${GITHUB_WORKSPACE}/tools/4DBuilder/Project/builder.4DProject" --user-param "{\"makeFile\":\"${GITHUB_WORKSPACE}/make.json\",\"verbose\":true,\"config\":\"release\",\"buildNumber\":\"1\",\"output\":\"${GITHUB_WORKSPACE}/Build\"}"
+          ${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d \
+            --dataless \
+            -s "${GITHUB_WORKSPACE}/tools/4DBuilder/Project/builder.4DProject" \
+            --user-param "{\"makeFile\":\"${GITHUB_WORKSPACE}/make.json\",\"verbose\":true,\"config\":\"release\",\"buildNumber\":\"1\",\"output\":\"${GITHUB_WORKSPACE}/Build\"}"
 
-          # Check file existence
-          TARGET_FILE="${GITHUB_WORKSPACE}/Build/release/${env.REPO_NAME}.4dbase/${env.PROJECT_NAME}.4DZ"
+          # Vérification de l'existence du fichier .4DZ
+          TARGET_FILE="${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/${PROJECT_NAME}.4DZ"
           if [ ! -f "$TARGET_FILE" ]; then
-            echo "Build failed: $TARGET_FILE not found."
+            echo "❌ Build failed: $TARGET_FILE not found."
             exit 1
+          else
+            echo "✅ Build succeeded: $TARGET_FILE exists."
           fi
         shell: bash
 
