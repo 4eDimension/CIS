@@ -296,6 +296,7 @@ jobs:
           path: tools
 
       - name: Download Client Mac
+        if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on macOS'
         shell: cmd
         run: |
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
@@ -311,6 +312,7 @@ jobs:
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
 
       - name: Download Client Win
+        if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on Windows'
         shell: cmd
         run: |
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
@@ -456,6 +458,7 @@ jobs:
           path: tools
 
       - name: Download Client Win
+        if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on Windows'
         run: |
           FILE_NAME="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           LOCAL_PATH="${{ github.workspace }}/Build/update.win.4darchive"
@@ -470,6 +473,7 @@ jobs:
         shell: bash
 
       - name: Download Client Mac
+        if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on macOS'
         run: |
           FILE_NAME="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           LOCAL_PATH="${{ github.workspace }}/Build/Client/update.mac.4darchive"
