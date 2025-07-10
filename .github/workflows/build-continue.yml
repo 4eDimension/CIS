@@ -172,7 +172,7 @@ jobs:
     steps:
       - name: Cleaning
         run: |
-          rm -r ${GITHUB_WORKSPACE}
+          rm -rf ${GITHUB_WORKSPACE}
           mkdir ${GITHUB_WORKSPACE}
         shell: bash
         
@@ -233,34 +233,31 @@ jobs:
         id: create_make_json
         uses: 4eDimension/Tools/.github/actions/build-create-makejson@main
 
-      - name: Get repository name
-        run: echo "REPO_NAME=$(echo "$GITHUB_REPOSITORY" | cut -d'/' -f2)" >> $GITHUB_ENV
-
-      - name: Build backend
-        id: backend
+      - name: Set REPO_NAME and PROJECT_NAME environment variables
         run: |
-          ${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d --dataless -s "${GITHUB_WORKSPACE}/tools/4DBuilder/Project/builder.4DProject" --user-param "{\"makeFile\":\"${GITHUB_WORKSPACE}/make.json\",\"verbose\":true,\"config\":\"release\",\"buildNumber\":\"1\",\"output\":\"${GITHUB_WORKSPACE}/Build\"}"
-        shell: bash
-
-      - name: "Extract 4D project name"
-        id: extract_project_name
-        run: |
+          echo "REPO_NAME=$(echo $GITHUB_REPOSITORY | cut -d'/' -f2)" >> "$GITHUB_ENV"
           PROJECT_PATH=$(find Project -name "*.4DProject" | head -n 1)
           PROJECT_NAME=$(basename "$PROJECT_PATH" .4DProject)
-          echo "PROJECT_NAME=$PROJECT_NAME" >> $GITHUB_ENV
+          echo "PROJECT_NAME=$PROJECT_NAME" >> "$GITHUB_ENV"
+        shell: bash
 
-      - name: "Check 4DZ file existence"
-        id: check_file
-        uses: andstor/file-existence-action@v3
-        with:
-          files: ${{ github.workspace }}/Build/release/${{ env.REPO_NAME }}.4dbase/${{ env.PROJECT_NAME }}.4DZ
-
-      - name: File doesn't exist
-        if: steps.check_file.outputs.files_exists == 'false'
-        # Only runs if the file doesn't exist
+      - name: Compilation
+        id: compilation
         run: |
-          echo Build failed!
-          exit 1
+          ${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d \
+            --dataless \
+            -s "${GITHUB_WORKSPACE}/tools/4DBuilder/Project/builder.4DProject" \
+            --user-param "{\"makeFile\":\"${GITHUB_WORKSPACE}/make.json\",\"verbose\":true,\"config\":\"release\",\"buildNumber\":\"1\",\"output\":\"${GITHUB_WORKSPACE}/Build\"}"
+
+          # Vérification de l'existence du fichier .4DZ
+          TARGET_FILE="${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/${PROJECT_NAME}.4DZ"
+          if [ ! -f "$TARGET_FILE" ]; then
+            echo "❌ Compilation failed: $TARGET_FILE not found"
+            exit 1
+          else
+            echo "✅ Compilation succeeded: $TARGET_FILE exists"
+          fi
+        shell: bash
 
       - name: Check package.json or create it
         id: create_package_json
@@ -272,7 +269,7 @@ jobs:
       - name: Create manifest & info.plist
         id: manifest
         run: |
-          git pull origin main
+          git pull origin Separated-executable-build
           package_name=$(cat package.json | jq -r ".name")
           target_tag=$(cat package.json | jq -r ".version")
           creation_date=$(date +'%Y-%m-%d')
@@ -292,7 +289,7 @@ jobs:
             echo "Format de version 4D non reconnu : $version4d"
             exit 1
           fi
-          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${{ env.REPO_NAME }}.4dbase/Resources/manifest.json
+          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/Resources/manifest.json
           {
             "name": "$package_name",
             "version": "$target_tag",
@@ -300,7 +297,7 @@ jobs:
             "tag": "$tag_value"
           }
           EOF
-          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${{ env.REPO_NAME }}.4dbase/Resources/InfoPlist.strings
+          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/Resources/InfoPlist.strings
           /* Localized versions of Info.plist keys */
 
           CFBundleName = "$package_name";
@@ -365,7 +362,7 @@ jobs:
         id: zip
         run: |
           cd ${{ github.workspace }}/Build/release/
-          zip -r ${{ github.workspace }}/Build/release/${{ vars.APPNAME }}.zip ./${{ env.REPO_NAME }}.4dbase/*
+          zip -r ${{ github.workspace }}/Build/release/${{ vars.APPNAME }}.zip ./${REPO_NAME}.4dbase/*
         shell: bash
 
       - name: Upload FTP
