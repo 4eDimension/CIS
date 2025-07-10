@@ -599,7 +599,7 @@ jobs:
       - name: Get version
         id: version
         run: |
-          git pull origin Separated-executable-build
+          git pull origin main
           version=`cat package.json | jq -r '.version'`
           echo "version=${version}" >> $GITHUB_OUTPUT
         shell: bash
