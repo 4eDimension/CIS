@@ -633,21 +633,23 @@ jobs:
           color: green
           forceUpdate: true
 
-      - name: Cleaning
+  Cleaning:
+    name: Update Badges
+    needs: [Increment-version-number, Build-Server-on-Win, Build-Server-on-Mac, Update-Badges]
+    runs-on: [self-hosted, linux]
+    steps:
+
+      - name: Delete FTP files
         run: |
           FILE_NAME_WIN="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           FILE_NAME_MAC="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
 
-          FTP_URL="ftp://${{ secrets.FTP_PRIVATE_SERVER }}:2121"
-          FTP_PATH="${{ secrets.FTP_PRIVATE_SHORT_PATH }}"
-          FTP_USER="${{ secrets.FTP_PRIVATE_LOGIN }}"
-
           for FILE in "$FILE_NAME_WIN" "$FILE_NAME_MAC"; do
             echo "Deleting $FILE from FTP..."
             curl --ftp-ssl-reqd \
-              --user $FTP_USER:'${{ secrets.FTP_PRIVATE_PASSWORD }}' \
-              --quote "CWD /$FTP_PATH" \
+              --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' \
+              --quote "CWD /${{ secrets.FTP_PRIVATE_SHORT_PATH }}" \
               --quote "DELE $FILE" \
-              "$FTP_URL"
+              "ftp://${{ secrets.FTP_PRIVATE_SERVER }}:2121"
           done
         shell: bash
