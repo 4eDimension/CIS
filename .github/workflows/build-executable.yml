@@ -1,25 +1,6 @@
 name: Build executable
 
 on:
-  workflow_call:
-    inputs:
-      mode:
-        type: string
-        required: true
-        description: Semantic versioning
-      forceClientAutoUpdate:
-        type: boolean
-        required: true
-        description: Force clients auto update
-      buildClient:
-        type: string
-        required: true
-        description: Build client platforms
-      buildServer:
-        type: string
-        required: true
-        description: Build server platforms
-        
   workflow_dispatch:
     inputs:
       mode:
