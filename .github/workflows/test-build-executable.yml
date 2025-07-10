@@ -21,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: test build executable
-        uses: ./.github/workflows/build-executable@Separated-executable-build
+        uses: ./.github/workflows/build-executable
         with:
           mode: patch
           forceClientAutoUpdate: ${{ matrix.forceClientAutoUpdate }}
