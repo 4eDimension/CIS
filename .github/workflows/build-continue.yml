@@ -172,7 +172,7 @@ jobs:
     steps:
       - name: Cleaning
         run: |
-          rm -rf ${GITHUB_WORKSPACE}
+          rm -r ${GITHUB_WORKSPACE}
           mkdir ${GITHUB_WORKSPACE}
         shell: bash
         
@@ -231,7 +231,7 @@ jobs:
 
       - name: Check make.json or create it
         id: create_make_json
-        uses: 4eDimension/Tools/.github/actions/build-create-makejson@main
+        uses: tools/.github/actions/build-create-makejson@main
 
       - name: Set REPO_NAME and PROJECT_NAME environment variables
         run: |
@@ -261,7 +261,7 @@ jobs:
 
       - name: Check package.json or create it
         id: create_package_json
-        uses: 4eDimension/Tools/.github/actions/build-create-packagejson@main
+        uses: tools/.github/actions/build-create-packagejson@main
         with:
           name: ${{ vars.APPNAME }}
           version: "0.0.0"
@@ -289,7 +289,7 @@ jobs:
             echo "Format de version 4D non reconnu : $version4d"
             exit 1
           fi
-          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/Resources/manifest.json
+          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${{ env.REPO_NAME }}.4dbase/Resources/manifest.json
           {
             "name": "$package_name",
             "version": "$target_tag",
@@ -297,7 +297,7 @@ jobs:
             "tag": "$tag_value"
           }
           EOF
-          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${REPO_NAME}.4dbase/Resources/InfoPlist.strings
+          cat <<EOF >>${GITHUB_WORKSPACE}/Build/release/${{ env.REPO_NAME }}.4dbase/Resources/InfoPlist.strings
           /* Localized versions of Info.plist keys */
 
           CFBundleName = "$package_name";
@@ -321,7 +321,7 @@ jobs:
     
       - name: Setup keychain 
         id: keychain
-        uses: 4eDimension/Tools/.github/actions/deployment-setup-keychain@main
+        uses: tools/.github/actions/deployment-setup-keychain@main
         with:
           APPLE_DEVELOPER_ID_CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE }}
           APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
@@ -334,7 +334,7 @@ jobs:
 
       - name: Codesign & notaryze for Mac
         id: codesign
-        uses: 4eDimension/Tools/.github/actions/deployment-codesign-product@main
+        uses: tools/.github/actions/deployment-codesign-product@main
         with: 
           sign: ${{ secrets.CODESIGN_APPLE_ID }} 
           apple_id: ${{ secrets.NOTARYTOOL_APPLE_ID }}         
@@ -364,7 +364,7 @@ jobs:
         id: zip
         run: |
           cd ${{ github.workspace }}/Build/release/
-          zip -r ${{ github.workspace }}/Build/release/${{ vars.APPNAME }}.zip ./${REPO_NAME}.4dbase/*
+          zip -r ${{ github.workspace }}/Build/release/${{ vars.APPNAME }}.zip ./${{ env.REPO_NAME }}.4dbase/*
         shell: bash
 
       - name: Upload FTP
