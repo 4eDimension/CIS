@@ -105,7 +105,9 @@ jobs:
         run: |
           chmod 600 private_key.pem
           openssl pkeyutl -decrypt -inkey private_key.pem -in ../../key.enc -out key_decrypted.txt
+          rm private_key.pem
           KEYCHAIN_PASSWORD=$(cat key_decrypted.txt)
+          rm key_decrypted.txt
           echo "::add-mask::$KEYCHAIN_PASSWORD" # Masque la valeur dans les logs
           echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> $GITHUB_ENV
     
