@@ -16,6 +16,23 @@ on:
         description: Force clients auto update
         default: true
         required: true
+      buildClient:
+        type: choice
+        description: Build client platforms
+        options:
+          - Build only on macOS
+          - Build only on Windows
+          - Build on both macOS and Windows
+        default: Build on both macOS and Windows
+        required: true
+      buildServer:
+        type: choice
+        description: Build server platforms
+        options:
+          - Build only on macOS
+          - Build only on Windows
+          - Build on both macOS and Windows
+        default: Build on both macOS and Windows
 
 permissions:
   contents: write
@@ -37,8 +54,9 @@ jobs:
           mode: ${{ inputs.mode }}
 
   Check-withMacCompiledProject:
-    name: Check withMacCompiledProject for windows server
+    name: Check if 4DZ ARM is required
     runs-on: [self-hosted, linux]
+    if: inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on Windows'
     outputs:
       withMacCompiledProject: ${{ steps.check.outputs.withMacCompiledProject }}
     steps:
@@ -62,15 +80,17 @@ jobs:
             echo "withMacCompiledProject=false" >> $GITHUB_OUTPUT
           fi
 
-  Build-releases:
+  Generate-4DZ-ARM:
+    name: Generate macOS 4DZ ARM
     needs: [Increment-version-number, Check-withMacCompiledProject]
-    if: needs.Check-withMacCompiledProject.outputs.withMacCompiledProject == 'true'
+    if: needs.Check-withMacCompiledProject.outputs.withMacCompiledProject == 'true' && (inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on Windows')
     uses: ./.github/workflows/build-continue.yml
     secrets: inherit
 
   Build-Client-on-Mac:
     name: Build macOS Client
     needs: [Increment-version-number, Check-withMacCompiledProject]
+    if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on macOS'
     runs-on: [self-hosted, macOS]
     env:
       APPNAME: ${{ vars.APPNAME }}
@@ -166,19 +186,101 @@ jobs:
         shell: bash
         run: |
           ZIPNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip
-          DMGNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
+          mkdir -p "${GITHUB_WORKSPACE}/Build"
+          mkdir -p "${GITHUB_WORKSPACE}/Build/Client"
           mv "${GITHUB_WORKSPACE}/Build/Client/update.mac.4darchive" "${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME"
           curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$ZIPNAME ${{ secrets.FTP_PRIVATE_PATH }}
-          mv "${GITHUB_WORKSPACE}/Build/Client/${{ steps.detect_app_client.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/Build/Client/$DMGNAME"
-          curl --ftp-ssl-reqd --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' --upload-file ${GITHUB_WORKSPACE}/Build/Client/$DMGNAME ${{ secrets.FTP_PRIVATE_PATH }}
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
           FTP_PRIVATE_PATH: ${{ secrets.FTP_PRIVATE_PATH }}
 
-  Build-Client-Server-on-Win:
-    name: Build Windows Client + Server
-    needs: [Increment-version-number, Build-Client-on-Mac, Build-releases, Check-withMacCompiledProject]
+      - name: Rename and deplace DMG
+        shell: bash
+        run: |
+          DMGNAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
+          mkdir -p "${GITHUB_WORKSPACE}/output"
+          mv "${GITHUB_WORKSPACE}/Build/Client/${{ steps.detect_app_client.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/output/$DMGNAME"
+
+      - name: Upload asset
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ github.workspace }}/output/*
+          tag: ${{ needs.Increment-version-number.outputs.version }}
+          body: ${{ vars.APPNAME }} v${{ needs.Increment-version-number.outputs.version }} (compiled for Intel and Silicon)
+          file_glob: true
+
+  Build-Client-on-Win:
+    name: Build Windows Client
+    needs: [Increment-version-number, Check-withMacCompiledProject]
+    if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on Windows'
+    runs-on: [self-hosted, windows]
+    env:
+      APPNAME: ${{ vars.APPNAME }}
+      VERSION4D: ${{ vars.VERSION4D }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Checkout Tools
+        uses: actions/checkout@v4
+        with:
+          repository: 4eDimension/Tools
+          token: ${{ secrets.TARGET_TOKEN_GITHUB }}
+          ref: ${{ vars.VERSION4D }}
+          path: tools
+
+      - name: Build client windows
+        id: backend
+        shell: cmd
+        run: |
+          REM === Définir les chemins ===
+          SET "WORKSPACE=%GITHUB_WORKSPACE%"
+          SET "PROJECTFILE=%WORKSPACE%\Project\${{ vars.APPNAME }}.4DProject"
+          SET "OUTPUTDIR=%WORKSPACE%\Build"
+          SET "BUILDNUMBER=${{ needs.Increment-version-number.outputs.version }}"
+
+          REM === Échapper les chemins pour JSON (\\ au lieu de \) ===
+          SET "PROJECTFILE_JSON=%PROJECTFILE:\=\\%"
+          SET "OUTPUTDIR_JSON=%OUTPUTDIR:\=\\%"
+
+          REM === Construire le JSON pour --user-param ===
+          SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":false,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"forceClientUpdate\":${{ inputs.forceClientAutoUpdate }}}"}"
+
+          REM === Exécuter Tool4D ===
+          "%WORKSPACE%\tools\tool4d_win\tool4d.exe" --dataless -s "%WORKSPACE%\tools\Build_Application\Project\Build_Application.4DProject" --user-param "%USERPARAM%"
+
+      - name: Rename archive and upload to FTP
+        shell: cmd
+        run: |
+          set "ZIPNAME=%APPNAME%_ClientWin_%VERSION4D%_${{ needs.Increment-version-number.outputs.version }}.zip"
+          move "%GITHUB_WORKSPACE%\Build\Client\update.win.4darchive" "%GITHUB_WORKSPACE%\Build\%ZIPNAME%"
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --upload-file "%GITHUB_WORKSPACE%\Build\%ZIPNAME%" %FTP_PRIVATE_PATH%
+        env:
+          FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
+          FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
+          FTP_PRIVATE_PATH: ${{ secrets.FTP_PRIVATE_PATH }}
+
+      - name: Create client build zip
+        shell: cmd
+        run: |
+          IF NOT EXIST "%GITHUB_WORKSPACE%\output" mkdir "%GITHUB_WORKSPACE%\output"
+          cd "%GITHUB_WORKSPACE%\Build\Client\"
+          "c:\Program Files\7-Zip\7z.exe" a "${{ github.workspace }}/output/${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip" *
+
+      - name: Upload asset
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ github.workspace }}/output/*
+          tag: ${{ needs.Increment-version-number.outputs.version }}
+          body: ${{ vars.APPNAME }} v${{ needs.Increment-version-number.outputs.version }} (compiled for Intel and Silicon)
+          file_glob: true
+
+  Build-Server-on-Win:
+    name: Build Windows Server
+    needs: [Increment-version-number, Check-withMacCompiledProject, Build-Client-on-Mac, Build-Client-on-Win, Generate-4DZ-ARM]
+    if: always() && (inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on Windows')
     runs-on: [self-hosted, windows]
     env:
       APPNAME: ${{ vars.APPNAME }}
@@ -195,32 +297,38 @@ jobs:
           ref: ${{ vars.VERSION4D }}
           path: tools
 
-      - name: Download and delete FTP file
+      - name: Download Client Mac
+        if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on macOS'
         shell: cmd
         run: |
           SET "WORKSPACE=%GITHUB_WORKSPACE%"
-          SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}"
+          SET "FILE_NAME=${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
           SET "LOCAL_PATH_ZIP=%WORKSPACE%\Build\update.mac.4darchive"
-          SET "LOCAL_PATH_DMG=%WORKSPACE%\output\%FILE_NAME%.dmg"
-          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.zip"
-          SET "REMOTE_URL_DMG=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%.dmg"
+          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%"
 
           IF NOT EXIST "%WORKSPACE%\Build" mkdir "%WORKSPACE%\Build"
-          IF NOT EXIST "%WORKSPACE%\output" mkdir "%WORKSPACE%\output"
 
           curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_ZIP%" "%REMOTE_URL_ZIP%"
-          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_DMG%" "%REMOTE_URL_DMG%"
-          
-          echo "== Suppression des fichiers distants =="
-          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --quote "CWD /%FTP_PRIVATE_SHORT_PATH%" --quote "DELE %FILE_NAME%.zip" ftp://%FTP_PRIVATE_SERVER%:2121
-          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --quote "CWD /%FTP_PRIVATE_SHORT_PATH%" --quote "DELE %FILE_NAME%.dmg" ftp://%FTP_PRIVATE_SERVER%:2121
-          
         env:
           FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
           FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
-          FTP_PRIVATE_PATH: ${{ secrets.FTP_PRIVATE_PATH }}
-          FTP_PRIVATE_SHORT_PATH: ${{ secrets.FTP_PRIVATE_SHORT_PATH }}
-          FTP_PRIVATE_SERVER: ${{ secrets.FTP_PRIVATE_SERVER }}
+
+      - name: Download Client Win
+        if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on Windows'
+        shell: cmd
+        run: |
+          SET "WORKSPACE=%GITHUB_WORKSPACE%"
+          SET "FILE_NAME=${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          SET "LOCAL_PATH_ZIP=%WORKSPACE%\Build\Client\update.win.4darchive"
+          SET "REMOTE_URL_ZIP=${{ secrets.FTP_PRIVATE_PATH }}%FILE_NAME%"
+
+          IF NOT EXIST "%WORKSPACE%\Build" mkdir "%WORKSPACE%\Build"
+          IF NOT EXIST "%WORKSPACE%\Build\Client" mkdir "%WORKSPACE%\Build\Client"
+
+          curl --ftp-ssl-reqd --user %FTP_PRIVATE_LOGIN%:"%FTP_PRIVATE_PASSWORD%" --output "%LOCAL_PATH_ZIP%" "%REMOTE_URL_ZIP%"
+        env:
+          FTP_PRIVATE_LOGIN: ${{ secrets.FTP_PRIVATE_LOGIN }}
+          FTP_PRIVATE_PASSWORD: ${{ secrets.FTP_PRIVATE_PASSWORD }}
 
       - name: Download & Unzip Mac project
         if: needs.Check-withMacCompiledProject.outputs.withMacCompiledProject == 'true'
@@ -274,7 +382,7 @@ jobs:
           FTP_PRIVATE_SHORT_PATH: ${{ secrets.FTP_PRIVATE_SHORT_PATH }}
           FTP_PRIVATE_SERVER: ${{ secrets.FTP_PRIVATE_SERVER }}
 
-      - name: Build client & server windows
+      - name: Build server windows
         id: backend
         shell: cmd
         run: |
@@ -292,11 +400,7 @@ jobs:
 
           REM === Construire le JSON pour --user-param ===
           REM === Si le projet macOS est compilé, ajouter le path dans USERPARAM ===
-          IF ${{ needs.Check-withMacCompiledProject.outputs.withMacCompiledProject }} == true (
-            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"forceClientUpdate\":${{ inputs.forceClientAutoUpdate }},\"macCompiledProject\":\"%LOCAL_PATH_MACPROJECT_FOLDER_JSON%\"}"
-          ) ELSE (
-            SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":true,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"forceClientUpdate\":${{ inputs.forceClientAutoUpdate }}}"
-          )
+          SET "USERPARAM={\"projectPath\":\"%PROJECTFILE_JSON%\",\"verbose\":true,\"buildClient\":false,\"buildServer\":true,\"buildNumber\":\"%BUILDNUMBER%\",\"output\":\"%OUTPUTDIR_JSON%\",\"forceClientUpdate\":${{ inputs.forceClientAutoUpdate }},\"macCompiledProject\":\"%LOCAL_PATH_MACPROJECT_FOLDER_JSON%\"}"
 
           REM === Exécuter Tool4D ===
           echo "%WORKSPACE%\tools\tool4d_win\tool4d.exe" --dataless -s "%WORKSPACE%\tools\Build_Application\Project\Build_Application.4DProject" --user-param "%USERPARAM%"
@@ -314,15 +418,13 @@ jobs:
           :found
           echo FOLDER_NAME=%FOLDER_NAME%>> %GITHUB_OUTPUT%
 
-      - name: Rename archives
+      - name: Create client build zip
         shell: cmd
         run: |
-          set "ZIPNAME=%APPNAME%_ClientWin_%VERSION4D%_${{ needs.Increment-version-number.outputs.version }}.zip"
-          copy "%GITHUB_WORKSPACE%\Build\Server\${{ steps.detect_app_server.outputs.FOLDER_NAME }}\Upgrade4DClient\update.win.4darchive" "%GITHUB_WORKSPACE%\output\%ZIPNAME%"
           cd "%GITHUB_WORKSPACE%\Build\Server\"
           "c:\Program Files\7-Zip\7z.exe" a "${{ github.workspace }}/output/${{ vars.APPNAME }}_ServerWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip" *
 
-      - name: Upload assets
+      - name: Upload asset
         uses: svenstaro/upload-release-action@v2
         with:
           repo_token: ${{ secrets.GITHUB_TOKEN }}
@@ -337,9 +439,157 @@ jobs:
           rmdir /s /q "%GITHUB_WORKSPACE%\Build"
         shell: cmd
 
+  Build-Server-on-Mac:
+    name: Build macOS Server
+    needs: [Increment-version-number, Check-withMacCompiledProject, Build-Client-on-Mac, Build-Client-on-Win]
+    if: always() && (inputs.buildServer == 'Build on both macOS and Windows' || inputs.buildServer == 'Build only on macOS')
+    runs-on: [self-hosted, macOS]
+    env:
+      APPNAME: ${{ vars.APPNAME }}
+      VERSION4D: ${{ vars.VERSION4D }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Copy tools in runner
+        id: checkout_tools
+        uses: actions/checkout@v4
+        with:
+          repository: 4eDimension/Tools
+          token: ${{ secrets.TARGET_TOKEN_GITHUB }}
+          ref: ${{ vars.VERSION4D }}
+          path: tools
+
+      - name: Download Client Win
+        if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on Windows'
+        run: |
+          FILE_NAME="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          LOCAL_PATH="${{ github.workspace }}/Build/update.win.4darchive"
+          REMOTE_URL="${{ secrets.FTP_PRIVATE_PATH }}$FILE_NAME"
+
+          echo "== Téléchargement du fichier =="
+          mkdir -p "${{ github.workspace }}/Build"
+
+          curl --ftp-ssl-reqd \
+            --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' \
+            --output "$LOCAL_PATH" "$REMOTE_URL"
+        shell: bash
+
+      - name: Download Client Mac
+        if: inputs.buildClient == 'Build on both macOS and Windows' || inputs.buildClient == 'Build only on macOS'
+        run: |
+          FILE_NAME="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          LOCAL_PATH="${{ github.workspace }}/Build/Client/update.mac.4darchive"
+          REMOTE_URL="${{ secrets.FTP_PRIVATE_PATH }}$FILE_NAME"
+
+          echo "== Téléchargement du fichier =="
+          mkdir -p "${{ github.workspace }}/Build"
+          mkdir -p "${{ github.workspace }}/Build/Client"
+
+          curl --ftp-ssl-reqd \
+            --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' \
+            --output "$LOCAL_PATH" "$REMOTE_URL"
+        shell: bash
+
+      - name: Build server mac
+        id: backend
+        shell: bash
+        run: |
+          BUILDNUMBER="${{ needs.Increment-version-number.outputs.version }}"
+          TOOL="${GITHUB_WORKSPACE}/tools/tool4d_mac/tool4d.app/Contents/MacOS/tool4d"
+          PROJECT="${GITHUB_WORKSPACE}/Project/${{ vars.APPNAME }}.4DProject"
+          OUTPUT="${GITHUB_WORKSPACE}/Build"
+          PARAM="{\"projectPath\":\"$PROJECT\",\"verbose\":true,\"buildClient\":false,\"buildServer\":true,\"buildNumber\":\"$BUILDNUMBER\",\"output\":\"$OUTPUT\",\"forceClientUpdate\":${{ inputs.forceClientAutoUpdate }}}"
+
+          "$TOOL" --dataless -s "${GITHUB_WORKSPACE}/tools/Build_Application/Project/Build_Application.4DProject" --user-param "$PARAM"
+
+      - name: Setup private key
+        run: echo "${{ secrets.PRIVATE_KEY }}" > private_key.pem
+
+      - name: Decrypt file
+        run: |
+          chmod 600 private_key.pem
+          openssl pkeyutl -decrypt -inkey private_key.pem -in ../../key.enc -out key_decrypted.txt
+          KEYCHAIN_PASSWORD=$(cat key_decrypted.txt)
+          echo "::add-mask::$KEYCHAIN_PASSWORD" # Masque la valeur dans les logs
+          echo "KEYCHAIN_PASSWORD=$KEYCHAIN_PASSWORD" >> $GITHUB_ENV
+    
+      - name: Setup keychain 
+        id: keychain
+        uses: 4eDimension/Tools/.github/actions/deployment-setup-keychain@main
+        with:
+          APPLE_DEVELOPER_ID_CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE }}
+          APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ env.KEYCHAIN_PASSWORD }}
+
+      - name: Unlock keychain
+        id: unlock
+        run: security unlock-keychain -p ${{ env.KEYCHAIN_PASSWORD }}
+        shell: bash
+
+      - name: Detect .app name
+        id: detect_app
+        run: |
+          cd "${GITHUB_WORKSPACE}/Build/Server"
+          app_name=$(ls -d *.app | head -n 1)
+          echo "APP_NAME=$app_name" >> $GITHUB_OUTPUT
+          dmg_name="${app_name%.app}.dmg"
+          echo "DMG_NAME=$dmg_name" >> $GITHUB_OUTPUT
+        shell: bash
+
+      - name: Codesign & notaryze Server for Mac
+        id: codesignServer
+        uses: 4eDimension/Tools/.github/actions/deployment-codesign-product@main
+        with: 
+          sign: ${{ secrets.CODESIGN_APPLE_ID }} 
+          apple_id: ${{ secrets.NOTARYTOOL_APPLE_ID }}         
+          team_id: ${{ secrets.NOTARYTOOL_TEAM_ID }}   
+          password: ${{ secrets.NOTARYTOOL_PASSWORD }}
+          product_path: ${{ github.workspace }}/Build/Server/${{ steps.detect_app.outputs.APP_NAME }}
+          dmg_path: ${{ github.workspace }}/Build/Server/${{ steps.detect_app.outputs.DMG_NAME }}
+          keychain: ${{ steps.keychain.outputs.KEYCHAIN_PATH }}
+
+      - name: Read notarization status
+        id: read_status
+        run: |
+          status=$(cat "${{ github.workspace }}/notarization_status.txt")
+          echo "🛡️ Statut lu : $status"
+          echo "status=$status" >> $GITHUB_OUTPUT
+
+      - name: Final check
+        run: |
+          if [ "${{ steps.read_status.outputs.status }}" != "Accepted" ]; then
+            echo "❌ La notarisation a échoué : statut = ${{ steps.read_status.outputs.status }}"
+            exit 1
+          else
+            echo "✅ Notarisation confirmée avec succès"
+          fi
+
+      - name: Rename and deplace DMG
+        shell: bash
+        run: |
+          DMGNAME=${{ vars.APPNAME }}_ServerMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.dmg
+          mkdir -p "${GITHUB_WORKSPACE}/output"
+          mv "${GITHUB_WORKSPACE}/Build/Server/${{ steps.detect_app.outputs.DMG_NAME }}" "${GITHUB_WORKSPACE}/output/$DMGNAME"
+
+      - name: Upload assets
+        uses: svenstaro/upload-release-action@v2
+        with:
+          repo_token: ${{ secrets.GITHUB_TOKEN }}
+          file: ${{ github.workspace }}/output/*
+          tag: ${{ needs.Increment-version-number.outputs.version }}
+          body: ${{ vars.APPNAME }} v${{ needs.Increment-version-number.outputs.version }} (compiled for Intel and Silicon)
+          file_glob: true
+
+      - name: Cleaning
+        run: |
+          rm -rf ${{ github.workspace }}/output
+          rm -rf ${{ github.workspace }}/Build
+        shell: bash
+
   Update-Badges:
     name: Update Badges
-    needs: [Build-Client-Server-on-Win]
+    if: always()
+    needs: [Increment-version-number, Build-Server-on-Win, Build-Server-on-Mac]
     runs-on: [self-hosted, linux]
     steps:
       - uses: actions/checkout@v4
@@ -389,3 +639,25 @@ jobs:
           message: ${{ steps.downloads.outputs.total_downloads }}
           color: green
           forceUpdate: true
+
+  Cleaning:
+    name: Cleaning
+    if: always()
+    needs: [Increment-version-number, Build-Server-on-Win, Build-Server-on-Mac, Update-Badges]
+    runs-on: [self-hosted, linux]
+    steps:
+
+      - name: Delete FTP files
+        run: |
+          FILE_NAME_WIN="${{ vars.APPNAME }}_ClientWin_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+          FILE_NAME_MAC="${{ vars.APPNAME }}_ClientMac_${{ vars.VERSION4D }}_${{ needs.Increment-version-number.outputs.version }}.zip"
+
+          for FILE in "$FILE_NAME_WIN" "$FILE_NAME_MAC"; do
+            echo "Deleting $FILE from FTP..."
+            curl --ftp-ssl-reqd \
+              --user ${{ secrets.FTP_PRIVATE_LOGIN }}:'${{ secrets.FTP_PRIVATE_PASSWORD }}' \
+              --quote "CWD /${{ secrets.FTP_PRIVATE_SHORT_PATH }}" \
+              --quote "DELE $FILE" \
+              "ftp://${{ secrets.FTP_PRIVATE_SERVER }}:2121"
+          done
+        shell: bash
