@@ -231,7 +231,7 @@ jobs:
 
       - name: Check make.json or create it
         id: create_make_json
-        uses: tools/.github/actions/build-create-makejson@main
+        uses: 4eDimension/Tools/.github/actions/build-create-makejson@main
 
       - name: Set REPO_NAME and PROJECT_NAME environment variables
         run: |
@@ -261,7 +261,7 @@ jobs:
 
       - name: Check package.json or create it
         id: create_package_json
-        uses: tools/.github/actions/build-create-packagejson@main
+        uses: 4eDimension/Tools/.github/actions/build-create-packagejson@main
         with:
           name: ${{ vars.APPNAME }}
           version: "0.0.0"
@@ -321,7 +321,7 @@ jobs:
     
       - name: Setup keychain 
         id: keychain
-        uses: tools/.github/actions/deployment-setup-keychain@main
+        uses: 4eDimension/Tools/.github/actions/deployment-setup-keychain@main
         with:
           APPLE_DEVELOPER_ID_CERTIFICATE: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE }}
           APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_DEVELOPER_ID_CERTIFICATE_PASSWORD }}
@@ -334,7 +334,7 @@ jobs:
 
       - name: Codesign & notaryze for Mac
         id: codesign
-        uses: tools/.github/actions/deployment-codesign-product@main
+        uses: 4eDimension/Tools/.github/actions/deployment-codesign-product@main
         with: 
           sign: ${{ secrets.CODESIGN_APPLE_ID }} 
           apple_id: ${{ secrets.NOTARYTOOL_APPLE_ID }}         
